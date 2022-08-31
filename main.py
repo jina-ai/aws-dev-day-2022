@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from docarray import Document
 from docarray.document.pydantic_model import PydanticDocument
 
-from utils import load_data, logger
+from utils import load_data
+import logging
 
 app = FastAPI()
 
@@ -30,9 +31,9 @@ async def post_images(item: PydanticDocument):
     images.append(doc)
     try:
         images.push(name=f'{da_name}_alpha')
-        logger.info(f'pushing data completed, total images: {len(images)}')
+        logging.info(f'pushing data completed, total images: {len(images)}')
     except Exception as e:
-        logger.error(f'pushing data failed, {e}')
+        logging.error(f'pushing data failed, {e}')
     return {
         'message': 'image added',
         'total': len(images)
