@@ -1,26 +1,13 @@
 from fastapi import FastAPI
-import os
-from docarray import Document, DocumentArray
+from docarray import Document
 from docarray.document.pydantic_model import PydanticDocument
 
+from utils import load_data, logger
 
 app = FastAPI()
 
-
-def load_data(name):
-    if os.environ.get('JINA_AUTH_TOKEN', None) is not None:
-        try:
-            da = DocumentArray.pull(name=name)
-            return da
-        except Exception as e:
-            print(f'加载数据失败, {e}')
-    else:
-        print('JINA_AUTH_TOKEN is not set')
-
-
 da_name = 'aws_china_dev_day_demo_202208_cn'
 images = load_data(da_name)
-# images = DocumentArray.load_binary('data.bin')
 
 
 @app.get('/images')
@@ -41,13 +28,12 @@ async def get_images(skip: int = 0, limit: int = 3):
 async def post_images(item: PydanticDocument):
     doc = Document.from_pydantic_model(item)
     images.append(doc)
-    images.push(name=f'{da_name}_alpha')
+    try:
+        images.push(name=f'{da_name}_alpha')
+        logger.info(f'pushing data completed, total images: {len(images)}')
+    except Exception as e:
+        logger.error(f'pushing data failed, {e}')
     return {
         'message': 'image added',
+        'total': len(images)
     }
-
-from starlette.testclient import TestClient
-client = TestClient(app)
-
-response = client.post('/images', json=PydanticDocument().json(), headers={"Content-Type": "application/json"})
-print(response, response.text)
