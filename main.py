@@ -1,15 +1,20 @@
-from fastapi import FastAPI
-from docarray import Document
-from docarray.document.pydantic_model import PydanticDocument
-
-from utils import load_data
 import logging
+
+from docarray import Document, DocumentArray
+from docarray.document.pydantic_model import PydanticDocument
+from fastapi import FastAPI
 
 app = FastAPI()
 
-da_name = 'aws_china_dev_day_demo_202208_cn'
-images = load_data(da_name)
-
+local_backup_fn = 'data.bin'
+import os
+images = DocumentArray.empty()
+if os.path.exists(local_backup_fn):
+    try:
+        images = DocumentArray.load_binary(local_backup_fn)
+        logging.info(f'loading data from {local_backup_fn} completed, size {len(images)}')
+    except Exception as e:
+        logging.warning(f'loading data from {local_backup_fn} failed')
 
 @app.get('/images')
 async def get_images(skip: int = 0, limit: int = 3):
@@ -30,10 +35,10 @@ async def post_images(item: PydanticDocument):
     doc = Document.from_pydantic_model(item)
     images.append(doc)
     try:
-        images.push(name=f'{da_name}_alpha')
-        logging.info(f'pushing data completed, total images: {len(images)}')
+        images.save_binary(local_backup_fn)
+        logging.info(f'saving data completed, total images: {len(images)}')
     except Exception as e:
-        logging.error(f'pushing data failed, {e}')
+        logging.error(f'saving data failed, {e}')
     return {
         'message': 'image added',
         'total': len(images)
