@@ -16,12 +16,14 @@ def get_images(skip=0, size=-1):
     # get images from the /images if the local session is lost
 
     resp = requests.get(storage_url,
-                      headers={"Content-Type": "application/json", "accept": "application/json"})
-    resp.json()
-    da = DocumentArray.empty()
-    end = skip + size if size != -1 else len(da)
+                        params={'skip': skip, 'limit': size},
+                        headers={"Content-Type": "application/json", "accept": "application/json"})
+    da = DocumentArray.from_list(resp.json())
+    # da = DocumentArray.empty()
+    # end = skip + size if size != -1 else len(da)
     logging.info(f'GET images. skip: {skip}, size: {size}')
-    return da[skip:end]
+    # return da[skip:end]
+    return da
 
 
 class Status(Enum):

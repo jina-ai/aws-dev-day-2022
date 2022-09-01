@@ -1,4 +1,5 @@
 import requests
+from docarray import DocumentArray
 import json
 
 da_name = 'aws_china_dev_day_demo_202208_cn_alpha'
@@ -15,8 +16,10 @@ url = 'http://52.81.237.209:45678/images'
 # print(x)
 # print(x.text)
 
-x = requests.get(url, headers={"Content-Type": "application/json", "accept": "application/json"})
+x = requests.get(url,
+                 params={'skip': 0, 'limit': 1},
+                 headers={"Content-Type": "application/json", "accept": "application/json"})
+from docarray.document.pydantic_model import PydanticDocumentArray
 resp = x.json()
-print(type(resp))
-print(resp['images'][0].keys())
-# print(resp)
+da = DocumentArray.from_list(resp)
+print(da.summary())
