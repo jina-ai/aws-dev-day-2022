@@ -5,3 +5,4 @@ docarray
 streamlit
 jina
 openai
+requests

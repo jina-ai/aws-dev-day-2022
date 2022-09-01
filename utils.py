@@ -1,31 +1,27 @@
 import logging
 import os
 from enum import Enum
+import openai
+import json
 
 import streamlit as st
 from docarray import Document, DocumentArray
 from datetime import datetime
+import requests
 
+storage_url = 'http://52.81.237.209:45678/images'
 
 @st.cache(allow_output_mutation=True)
 def get_images(skip=0, size=-1):
     # get images from the /images if the local session is lost
-    da = DocumentArray.empty(size=5)
+
+    resp = requests.get(storage_url,
+                      headers={"Content-Type": "application/json", "accept": "application/json"})
+    resp.json()
+    da = DocumentArray.empty()
     end = skip + size if size != -1 else len(da)
     logging.info(f'GET images. skip: {skip}, size: {size}')
     return da[skip:end]
-
-
-def load_data(name):
-    if os.environ.get('JINA_AUTH_TOKEN', None) is not None:
-        try:
-            da = DocumentArray.pull(name=name)
-            logging.info(f'loading data completed, len(): {len(da)}')
-            return da
-        except Exception as e:
-            logging.error(f'加载数据失败, {e}')
-    else:
-        logging.warning('JINA_AUTH_TOKEN is not set')
 
 
 class Status(Enum):
@@ -42,21 +38,21 @@ def get_prompt():
     plot_tile()
     plot_sidebar()
     if 'fav_docs' in st.session_state:
-        st.text(f'前情提要：{st.session_state.fav_docs[-1].tags["description"]}')
-    # st.subheader('故事接龙：我们开着一辆红色的巴士去...')
+        if st.session_state.fav_docs:
+            st.text(f'前情提要：{st.session_state.fav_docs[-1].tags["description"]}')
     st.text_input('',
                   key='description_raw',
-                  # placeholder='举个例子：故宫 / 巴黎 / 麦田 / 野餐 / 看夕阳',
+                  placeholder='举个例子：我们一起坐巴士去巴黎，看到了艾弗尔铁塔',
                   max_chars=32,
                   on_change=translate_prompt)
 
 
 def translate_prompt():
     if st.session_state.description_raw:
+        if not st.session_state.description_raw.endswith('.') and not st.session_state.description_raw.endswith('。'):
+            st.session_state.description_raw += '.'
+        logging.info(f'get description_raw: {st.session_state.description_raw}')
         st.session_state.status = Status.OPENAI
-        # f'a children book illustration of a red bus and {scenario}, the style of Linh Pham'
-        # f'a children book illustration of a red bus and {scenario}, the style of Studio Ghibli'
-        import openai
         openai.api_key = os.getenv('OPENAI_API_KEY', None)
         if openai.api_key is None:
             st.error('Translation API failed')
@@ -65,24 +61,26 @@ def translate_prompt():
                 model="text-davinci-002",
                 prompt=f"Translate this into English:\n{st.session_state.description_raw}",
                 temperature=0.3,
-                max_tokens=100,
+                max_tokens=36,
                 top_p=1,
                 frequency_penalty=0,
                 presence_penalty=0
             )
             text_en = response['choices'][0]['text'].strip()
-            print(f'text_en: {text_en}')
+            logging.info(f'translate to english text_en: {text_en}')
             response = openai.Completion.create(
                 model="text-davinci-002",
                 prompt=f"Write a description for a child book illustration. \n\nstory: {st.session_state.description_raw}",
                 temperature=0.7,
-                max_tokens=256,
+                max_tokens=48,
                 top_p=1,
                 frequency_penalty=0,
                 presence_penalty=0
             )
-            st.session_state['prompt_raw'] = text_en
-            print(f'st.session_state["prompt_raw"]: {st.session_state["prompt_raw"]}')
+            text_gpt3 = response['choices'][0]['text'].strip()
+            logging.info(f'text from gpt3: {text_gpt3}')
+            st.session_state['prompt_raw'] = text_gpt3
+            logging.info(f'st.session_state["prompt_raw"]: {st.session_state["prompt_raw"]}')
             get_from_dalle()
         except Exception as e:
             print(f'translation failed. {e}')
@@ -180,8 +178,8 @@ def reset_status():
         try:
             # send POST request to /images
             # retrieve new images
+            logging.info('POST to storage backend')
             ...
-
             # st.session_state.fav_docs.push(name='aws_china_dev_day_demo_202208_cn')
         except Exception:
             st.error('同步数据失败🚧')
@@ -201,7 +199,7 @@ def save_fav():
     dfav.tags['caption'] = \
         f'{st.session_state.doc.tags["description"]}\nBy {dfav.tags["author"]}, {dfav.tags["ctime"]}'
     dfav.tags['description'] = st.session_state.doc.tags["description"]
-    if 'fav_docs' not in st.session_state.keys():
+    if 'fav_docs' not in st.session_state:
         st.session_state['fav_docs'] = DocumentArray.empty()
     st.session_state.fav_docs.append(dfav)
     st.image(dfav.uri, caption=dfav.tags['caption'])

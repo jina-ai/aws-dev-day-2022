@@ -19,8 +19,7 @@ def main():
     if new_da:
         st.session_state.fav_docs.extend(new_da)
         logging.info(f'load data successfully. len(da): {len(new_da)}')
-    do_something()
-    # get_prompt()
+    get_prompt()
 
 
 main()
