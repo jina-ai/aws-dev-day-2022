@@ -18,16 +18,7 @@ if os.path.exists(local_backup_fn):
 
 @app.get('/images')
 async def get_images(skip: int = 0, limit: int = 3):
-    return {
-        'images': [
-            {
-                'caption': f'{d.tags["description"]}',
-                'author': f'{d.tags["author"]}',
-                'timestamp': f'{d.tags["ctime"]}',
-                'uri': f'{d.uri}'
-            } for d in images[skip:skip + limit]
-        ]
-    }
+    return images[skip:skip + limit].to_pydantic_model()
 
 
 @app.post('/images')
