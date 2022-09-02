@@ -12,8 +12,7 @@ import requests
 
 storage_url = 'http://52.81.237.209:45678'
 
-@st.cache(allow_output_mutation=True)
-def get_images(skip=0, size=-1):
+def get_images(skip=0, size=100):
     # get images from the /images if the local session is lost
 
     resp = requests.get(f'{storage_url}/images',
@@ -73,7 +72,7 @@ def translate_prompt():
             logging.info(f'translate to english text_en: {text_en}')
             response = openai.Completion.create(
                 model="text-davinci-002",
-                prompt=f"Write a description for a child book illustration. \n\nstory: {st.session_state.description_raw}",
+                prompt=f"Write a description for a child book illustration. \n\nstory: {text_en}",
                 temperature=0.7,
                 max_tokens=48,
                 top_p=1,
@@ -81,6 +80,8 @@ def translate_prompt():
                 presence_penalty=0
             )
             text_gpt3 = response['choices'][0]['text'].strip()
+            logging.info(f'text from gpt3: {text_gpt3}')
+            text_gpt3 = text_gpt3.split('\n')[-1]
             logging.info(f'text from gpt3: {text_gpt3}')
             st.session_state['prompt_raw'] = text_gpt3
             logging.info(f'st.session_state["prompt_raw"]: {st.session_state["prompt_raw"]}')
@@ -95,6 +96,7 @@ def get_from_dalle():
         # f'a children book illustration of a red bus and {scenario}, the style of Linh Pham'
         # f'a children book illustration of a red bus and {scenario}, the style of Studio Ghibli'
         prompt = f'a whimsical child book illustration in the style charming, childlike, carefree, dreamy, fun and colorful. {st.session_state.prompt_raw}'
+        logging.info(f'prompt: {prompt}')
         with st.spinner('正在努力构思✍️...'):
             try:
                 doc = Document(text=prompt).post(server_url, parameters={'num_images': 3})
@@ -186,8 +188,7 @@ def get_total_num_images():
     resp = requests.get(
         f'{storage_url}/image_ids',
         headers={"Content-Type": "application/json", "accept": "application/json"})
-    da = DocumentArray.from_list(resp.json())
-    return len(da)
+    return resp.json()['total_images']
 
 
 def reset_status():
@@ -223,7 +224,7 @@ def save_fav():
 
 
 server_url = 'grpcs://dalle-flow.dev.jina.ai'
-
+# server_url = 'grpcs://cn.dalle-flow.dev-cn.jina.ai:8443'
 
 def plot_tile():
     st.title('一起接龙给孩子讲故事')

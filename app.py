@@ -3,7 +3,7 @@ import logging
 from docarray import DocumentArray
 import streamlit as st
 
-from utils import Status, get_prompt, get_images, do_something
+from utils import Status, get_prompt, get_images
 
 if 'status' not in st.session_state:
     st.session_state['status'] = Status.PROMPT
