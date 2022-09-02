@@ -29,9 +29,9 @@ async def get_images(skip: int = 0, limit: int = 3):
     return images[skip:skip + limit].to_pydantic_model()
 
 
-@app.get('/image_ids', response_model=IdOnly)
+@app.get('/image_ids')
 async def get_image_ids():
-    return images.to_pydantic_model()
+    return {'total_images': len(images)}
 
 
 @app.post('/images')
