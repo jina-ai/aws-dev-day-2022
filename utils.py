@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 from enum import Enum
 import openai
 import json
@@ -9,13 +10,13 @@ from docarray import Document, DocumentArray
 from datetime import datetime
 import requests
 
-storage_url = 'http://52.81.237.209:45678/images'
+storage_url = 'http://52.81.237.209:45678'
 
 @st.cache(allow_output_mutation=True)
 def get_images(skip=0, size=-1):
     # get images from the /images if the local session is lost
 
-    resp = requests.get(storage_url,
+    resp = requests.get(f'{storage_url}/images',
                         params={'skip': skip, 'limit': size},
                         headers={"Content-Type": "application/json", "accept": "application/json"})
     da = DocumentArray.from_list(resp.json())
@@ -174,17 +175,28 @@ def get_from_upscale():
         st.button('再来一次', on_click=reset_status)
 
 
+def post_image(doc: Document):
+    resp = requests.post(
+        f'{storage_url}/images',
+        data=json.dumps(doc.to_dict()),
+        headers={"Content-Type": "application/json", "accept": "application/json"})
+
+
+def get_total_num_images():
+    resp = requests.get(
+        f'{storage_url}/image_ids',
+        headers={"Content-Type": "application/json", "accept": "application/json"})
+    da = DocumentArray.from_list(resp.json())
+    return len(da)
+
+
 def reset_status():
     st.session_state.status = Status.PROMPT
-    with st.spinner('重新准备画布'):
-        try:
-            # send POST request to /images
-            # retrieve new images
-            logging.info('POST to storage backend')
-            ...
-            # st.session_state.fav_docs.push(name='aws_china_dev_day_demo_202208_cn')
-        except Exception:
-            st.error('同步数据失败🚧')
+    num_images = get_total_num_images()
+    if len(st.session_state.fav_docs) != num_images:
+        threading.Thread(target=post_image, args=(st.session_state.fav_docs[-1], )).start()
+        logging.info(
+            f'POST to storage backend. fav_docs: {len(st.session_state.fav_docs)}, num_images: {num_images}')
 
 
 def get_name():

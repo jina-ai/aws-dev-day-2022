@@ -1,13 +1,15 @@
 import logging
+import os
 
 from docarray import Document, DocumentArray
 from docarray.document.pydantic_model import PydanticDocument
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 app = FastAPI()
 
 local_backup_fn = 'data.bin'
-import os
+
 images = DocumentArray.empty()
 if os.path.exists(local_backup_fn):
     try:
@@ -16,9 +18,20 @@ if os.path.exists(local_backup_fn):
     except Exception as e:
         logging.warning(f'loading data from {local_backup_fn} failed')
 
+
+
+class IdOnly(BaseModel):
+    id: str
+
+
 @app.get('/images')
 async def get_images(skip: int = 0, limit: int = 3):
     return images[skip:skip + limit].to_pydantic_model()
+
+
+@app.get('/image_ids', response_model=IdOnly)
+async def get_image_ids():
+    return images
 
 
 @app.post('/images')

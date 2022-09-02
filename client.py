@@ -17,7 +17,7 @@ url = 'http://52.81.237.209:45678/images'
 # print(x.text)
 
 x = requests.get(url,
-                 params={'skip': 0, 'limit': 1},
+                 params={'skip': 0, 'limit': 100},
                  headers={"Content-Type": "application/json", "accept": "application/json"})
 from docarray.document.pydantic_model import PydanticDocumentArray
 resp = x.json()
